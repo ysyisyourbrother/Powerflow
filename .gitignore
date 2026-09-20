@@ -1,0 +1,22 @@
+# ---- Octave 解释器(本地环境,体积大且含绝对路径,不提交)----
+# 队友 clone 后运行 ./install.sh 自动重建
+octave-env/
+
+# ---- Octave 运行时产物 ----
+octave-workspace
+*.png
+*.fig
+*.mat
+
+# ---- macOS ----
+.DS_Store
+._*
+
+# ---- 编辑器 ----
+.vscode/
+.idea/
+*.swp
+
+# ---- 可能含密钥的本地文件 ----
+.env
+.env.local
