@@ -1,1 +1,0 @@
-../../../../../lib/mpoption_info_mips.m

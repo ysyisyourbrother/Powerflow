@@ -1,143 +1,205 @@
 # Powerflow
 
-电力系统潮流计算 —— 比赛项目。
+电力系统潮流计算学习与仿真项目，全部使用 Python。
 
-基于 **MATPOWER 8.1** 框架,用 **Octave** 运行(无需 MATLAB,无需编译)。
+核心工具链：
 
----
+- **PYPOWER 5.1.21**：提供标准算例、母线/发电机/支路数据结构、导纳矩阵、
+  功率注入和成熟牛顿法参考实现。
+- **Pandapower 3.5.6**：提供工程化建模表、网络转换、潮流求解以及母线、发电机、
+  线路结果表。
+- **项目自研教学求解器**：把极坐标牛顿-拉夫逊法的残差、雅可比、线性修正和状态
+  更新完整展开，供逐行学习与验证。
 
 ## 目录结构
 
-```
+```text
 Powerflow/
-├── src/            # 算法入口代码 ← 写算法的地方
-│   ├── README.md
+├── src/
+│   ├── powerflow/              # Python 包：数据、牛拉法、回算、绘图
+│   │   ├── cases.py
+│   │   ├── newton_raphson.py
+│   │   ├── plotting.py
+│   │   └── report.py
 │   └── examples/
-│       └── smoke_test.m    # 环境自检 / 冒烟测试
-├── dataset/        # 比赛数据集 ← 放比赛方的输入数据
-├── matpower/       # MATPOWER 8.1 源码(纯 .m 文件,已内嵌到本仓库)
-├── octave-env/     # Octave 解释器(本地,不提交,见 .gitignore)
-├── startup.m       # Octave 启动时自动加载 MATPOWER + src/
-├── octave.sh       # 启动入口
-├── install.sh      # 重建开发环境(队友 clone 后跑这个)
+│       ├── smoke_test.py       # 环境与数值结果自检
+│       ├── step1_case9.py      # 自研牛顿法求解 case9
+│       ├── step2_pandapower.py # Pandapower 建模与仿真
+│       ├── step3_case39.py     # IEEE 39 三路径完整教程
+│       └── compare_backends.py # 三个求解路径对照
+├── dataset/                    # 比赛数据，目录约定保持不变
+├── doc/                        # 算例详解和核心代码剖析
+├── powerflow-textbook/         # 从数学到 Python 实现的完整教材
+│   └── labs/                   # 8 个 Python 实验
+├── tests/                      # 自动测试
+├── install.sh                  # 创建 .venv 并安装依赖
+├── pyproject.toml
+├── requirements.txt
 └── README.md
 ```
 
----
+## 安装
 
-## 快速开始
-
-### 1. 获取代码
-
-```bash
-git clone https://github.com/ysyisyourbrother/Powerflow.git
-cd Powerflow
-```
-
-### 2. 建环境(只需一次)
-
-`octave-env/` 没有提交到仓库(体积大、含绝对路径),用脚本重建:
+要求 Python 3.11 或 3.12。
 
 ```bash
 ./install.sh
 ```
 
-依赖:本机装有 [miniconda3](https://docs.conda.io/en/latest/miniconda.html)(或 Anaconda)。
-脚本只在**本目录内**创建 `octave-env/`,不动 conda 配置,不写任何文件到目录外。
+脚本会：
 
-### 3. 跑自检
+1. 在项目根目录创建 `.venv`；
+2. 安装 PYPOWER、Pandapower、NumPy、SciPy、Matplotlib；
+3. 以 editable 模式安装本项目；
+4. 自动运行环境自检。
 
-```bash
-./octave.sh src/examples/smoke_test.m
-```
-
-看到 `[PASS] 环境正常` 就说明装好了。
-
----
-
-## 日常使用
+也可以手动安装：
 
 ```bash
-cd Powerflow
-./octave.sh                    # 交互式 Octave(已自动加载 MATPOWER)
-./octave.sh src/main.m         # 跑算法入口
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip install -e . --no-deps --no-build-isolation
 ```
 
-进入 Octave 后:
+## 快速验证
 
-```matlab
-runpf('case9')       % 9 节点牛顿法潮流
-runpf('case14')
-runopf('case30')     % 最优潮流
-help runpf
-help mpoption        % 所有选项(算法/容差/迭代上限)
+```bash
+.venv/bin/python src/examples/smoke_test.py
 ```
 
----
+预期结果：
 
-## 写算法
+```text
+自研牛拉法: 收敛=True, 迭代=4
+PYPOWER   : 收敛= True
+Pandapower: 收敛= True , 迭代= 4
+[PASS] Python 潮流计算环境正常
+```
 
-代码放在 `src/`。`startup.m` 会把 `src/` 用 `addpath(..., '-begin')` 放到搜索路径**最前面**,所以:
+## 跑第一个例程
 
-- **想覆盖** MATPOWER 官方函数(例如换成你自己的牛顿法):在 `src/` 里放同名 `.m` 文件即可,
-  它会优先于 `matpower/lib/` 的官方版本被加载,官方源码保持原样。
-- **想新增**函数:直接写,不会冲突。
+```bash
+.venv/bin/python src/examples/step1_case9.py
+```
 
-想读潮流计算的主干,按这个顺序看 `matpower/lib/`:
+程序会：
 
-| 文件 | 作用 |
+1. 从 PYPOWER 读取 IEEE 9 节点算例；
+2. 构造 `Ybus` 和计划功率注入 `Sbus`；
+3. 用自研 Python 牛顿法迭代 4 次；
+4. 打印每次迭代的残差和修正量摘要；
+5. 回算发电机出力和线路潮流；
+6. 保存 `src/examples/case9_result.png`。
+
+## Pandapower 仿真
+
+```bash
+.venv/bin/python src/examples/step2_pandapower.py
+```
+
+该脚本把同一个 PYPOWER `case9` 转成 Pandapower 网络，再调用：
+
+```python
+pandapower.runpp(
+    net,
+    algorithm="nr",
+    calculate_voltage_angles=True,
+    tolerance_mva=1e-10,
+)
+```
+
+最后打印 `res_bus`、`res_gen`、`res_ext_grid` 和 `res_line`。
+
+## 已有 IEEE 39 节点数据
+
+`dataset/ieee39/` 已整理好 IEEE 39 节点 New England 系统原始数据和参考解：
+
+- PYPOWER：39 母线、10 发电机、46 支路；
+- Pandapower：39 母线、21 负荷、35 线路、11 台变压器；
+- 原始 CSV、JSON、NPZ、参考潮流结果和 SHA-256 校验；
+- 说明入口：[dataset/ieee39/README.md](dataset/ieee39/README.md)。
+
+## IEEE 39 节点完整教程
+
+```bash
+.venv/bin/python src/examples/step3_case39.py
+```
+
+一个算例，三条求解路径互相验证：
+
+| 路径 | 实现 | 迭代次数 |
+|---|---|---:|
+| A | PYPOWER `runpf` | 1（算例初值已接近收敛解） |
+| B | 自研极坐标牛顿法 | 1；平启动 4 |
+| C | Pandapower `runpp` | 4 |
+
+三个实现的最大电压差异：自研 vs PYPOWER 为 `2.2e-16` pu，
+Pandapower vs PYPOWER 为 `2.9e-14` pu。
+
+详细教程（数据、求解方法、结果解读）：[doc/case39/README.md](doc/case39/README.md)
+—— 分 10 个文件，每个 67 ~ 225 行，方便手机阅读。
+
+配套数据导出脚本：
+
+```bash
+.venv/bin/python dump_case39_tables.py     # 原始数据表
+.venv/bin/python dump_case39_solution.py   # 潮流结果表
+```
+
+## 三个结果路径
+
+```bash
+.venv/bin/python src/examples/compare_backends.py
+```
+
+| 路径 | 目的 |
 |---|---|
-| `runpf.m` | 主流程:读算例 → 内部编号转换 → 选算法 → 求解 → 输出 |
-| `newtonpf.m` | 牛顿法迭代主体 |
-| `dSbus_dV.m` | 雅可比矩阵组装 |
-| `makeYbus.m` | 节点导纳矩阵 Ybus |
-| `pfsoln.m` | 由解回算发电机/负荷功率 |
-| `ext2int.m` | 外部编号 ↔ 内部编号(读潮流代码前必看) |
+| `powerflow.solve_case9()` | 教学求解器，完整可观察每次迭代 |
+| `powerflow.run_pypower_case9()` | PYPOWER 成熟参考实现 |
+| `powerflow.run_pandapower_case9()` | Pandapower 工程化建模和结果表 |
 
----
+当前 case9 结果中，自研求解器与两个成熟库的母线电压最大差异约为 `1e-15`。
 
-## 数据
+## 教材
 
-比赛数据集放 `dataset/`。当前为空,等比赛方提供后填入;若数据是超大文件,
-建议加进 `.gitignore` 或改用 Git LFS,避免仓库过重。
+入口：[powerflow-textbook/README.md](powerflow-textbook/README.md)
 
----
+建议顺序：
 
-## 环境说明
+1. 第 1-4 章：算例、数据、标幺值、`Ybus`、功率平衡和未知量；
+2. 第 5 章：完整牛顿迭代数值过程；
+3. 第 6 章：Python 代码与公式逐行对照；
+4. 第 7 章：解析雅可比与有限差分验证；
+5. 第 8-10 章：结果回算、实验和比赛扩展。
 
-| 项 | 版本 |
-|---|---|
-| Octave | 10.3.0(conda-forge,osx-arm64 原生,含绘图) |
-| MATPOWER | 8.1(2025-07 发布,要求 Octave ≥ 6.2 / MATLAB ≥ R2016a) |
-
-**不需要编译。** MATPOWER 是纯 `.m` 文件,官方的 `install_matpower` 只是往搜索路径加目录 ——
-本项目用 `startup.m` 自动完成。
-
-MATPOWER 文档见 `matpower/docs/MATPOWER-manual.pdf`,官网 https://matpower.org
-
----
-
-## 三个已知的坑
-
-1. **不要用 `genpath('matpower')` 加载。** 仓库里有 785 个重名 `.m` 文件(测试目录 `*/lib/t/`
-   与各子模块之间),全量加载会让 `which()` 找到错误版本,`test_matpower` 直接失败。
-   `startup.m` 已改成官方 `install_matpower` 的精确目录清单。
-
-2. **不要直接跑 `octave-env/bin/octave`。** Octave 启动器运行时靠 `OCTAVE_HOME=$CONDA_PREFIX`
-   定位真正的二进制,该变量由 conda 的 activate 脚本设置。**一律用 `./octave.sh` 启动。**
-
-3. 算法选项名是 `'NR'` / `'FDXB'` / `'GS'`,**没有** `'FDPF'` 这个名字。
-
----
-
-## 卸载环境
+运行全部实验：
 
 ```bash
-rm -rf octave-env          # 只删环境,代码保留
+for f in powerflow-textbook/labs/lab*.py; do
+  .venv/bin/python "$f"
+done
 ```
 
-彻底清理 conda 共享缓存(可选,只删缓存不影响已装环境):
+## 测试
 
 ```bash
-conda clean --all
+.venv/bin/python -m pytest
 ```
+
+测试覆盖：
+
+- case9 是否 4 次收敛；
+- 自研极坐标雅可比是否与 PYPOWER 复数导数矩阵一致；
+- 解析雅可比是否通过中心差分；
+- 自研、PYPOWER、Pandapower 电压结果是否一致。
+
+## 环境清理
+
+只删除 Python 虚拟环境：
+
+```bash
+rm -rf .venv
+```
+
+依赖和版本声明保留在 `requirements.txt` 与 `pyproject.toml` 中，可随时重建。

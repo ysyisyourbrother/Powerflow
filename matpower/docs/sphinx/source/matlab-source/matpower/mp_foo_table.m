@@ -1,1 +1,0 @@
-../../../../../lib/t/mp_foo_table.m

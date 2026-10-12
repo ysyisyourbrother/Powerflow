@@ -1,22 +1,29 @@
-# ---- Octave 解释器(本地环境,体积大且含绝对路径,不提交)----
-# 队友 clone 后运行 ./install.sh 自动重建
-octave-env/
+# Python 环境与缓存
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
 
-# ---- Octave 运行时产物 ----
-octave-workspace
+# 运行生成物
 *.png
+!src/examples/case9_result.png
+!src/examples/case39_result.png
+!src/examples/case39_convergence.png
 *.fig
 *.mat
+.coverage
+htmlcov/
 
-# ---- macOS ----
+# macOS
 .DS_Store
 ._*
 
-# ---- 编辑器 ----
+# 编辑器
 .vscode/
 .idea/
 *.swp
 
-# ---- 可能含密钥的本地文件 ----
+# 本地敏感配置
 .env
 .env.local

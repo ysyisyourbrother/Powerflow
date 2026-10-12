@@ -1,0 +1,10 @@
+index,name,bus,p_mw,vm_pu,sn_mva,min_q_mvar,max_q_mvar,scaling,slack,in_service,slack_weight,type,controllable,max_p_mw,min_p_mw,id_q_capability_characteristic,reactive_capability_curve,curve_style
+0,,29,250,1.0499,,140,400,1,False,True,0,,True,1040,0,,False,
+1,,31,650,0.9841,,150,300,1,False,True,0,,True,725,0,,False,
+2,,32,632,0.9972,,0,250,1,False,True,0,,True,652,0,,False,
+3,,33,508,1.0123,,0,167,1,False,True,0,,True,508,0,,False,
+4,,34,650,1.0494,,-100,300,1,False,True,0,,True,687,0,,False,
+5,,35,560,1.0636,,0,240,1,False,True,0,,True,580,0,,False,
+6,,36,540,1.0275,,0,250,1,False,True,0,,True,564,0,,False,
+7,,37,830,1.0265,,-150,300,1,False,True,0,,True,865,0,,False,
+8,,38,1000,1.03,,-100,300,1,False,True,0,,True,1100,0,,False,

@@ -1,0 +1,22 @@
+{
+  "source": "PYPOWER case39 + Pandapower case39",
+  "network": "IEEE 39-bus New England system",
+  "baseMVA": 100.0,
+  "buses": 39,
+  "generators": 10,
+  "branches_pypower": 46,
+  "lines_pandapower": 35,
+  "transformers_pandapower": 11,
+  "loads_pandapower": 21,
+  "load_mw": 6254.23,
+  "load_mvar": 1387.1,
+  "generation_mw": 6297.871125760813,
+  "loss_mw": 43.64112576081334,
+  "pypower_success": true,
+  "pandapower_converged": true,
+  "pandapower_iterations": 4,
+  "vm_min_pu": 0.982,
+  "vm_max_pu": 1.0636,
+  "va_min_degree": -14.535256185405938,
+  "va_max_degree": 4.468437449298307
+}

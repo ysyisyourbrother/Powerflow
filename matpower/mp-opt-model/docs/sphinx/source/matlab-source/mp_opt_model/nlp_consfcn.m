@@ -1,1 +1,0 @@
-../../../../../lib/nlp_consfcn.m

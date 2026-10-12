@@ -1,0 +1,47 @@
+{
+  "exported_at": "2026-10-12T15:51:39.240594+00:00",
+  "pypower": {
+    "bus": 39,
+    "gen": 10,
+    "branch": 46
+  },
+  "pandapower": {
+    "bus": 39,
+    "load": 21,
+    "gen": 9,
+    "ext_grid": 1,
+    "line": 35,
+    "trafo": 11
+  },
+  "reference_solution": {
+    "source": "PYPOWER case39 + Pandapower case39",
+    "network": "IEEE 39-bus New England system",
+    "baseMVA": 100.0,
+    "buses": 39,
+    "generators": 10,
+    "branches_pypower": 46,
+    "lines_pandapower": 35,
+    "transformers_pandapower": 11,
+    "loads_pandapower": 21,
+    "load_mw": 6254.23,
+    "load_mvar": 1387.1,
+    "generation_mw": 6297.871125760813,
+    "loss_mw": 43.64112576081334,
+    "pypower_success": true,
+    "pandapower_converged": true,
+    "pandapower_iterations": 4,
+    "vm_min_pu": 0.982,
+    "vm_max_pu": 1.0636,
+    "va_min_degree": -14.535256185405938,
+    "va_max_degree": 4.468437449298307
+  },
+  "raw_root": "raw",
+  "checksums": "checksums.sha256",
+  "upstream_references": {
+    "pypower_case39": "https://github.com/rwl/PYPOWER/blob/master/pypower/case39.py",
+    "pandapower_case39": "https://github.com/e2nIEE/pandapower/blob/develop/pandapower/networks/power_system_test_case_jsons/case39.json",
+    "original_1970_report": "Bills et al., On-Line Stability Analysis Study, EEI RP90-1, 1970",
+    "pai_1989": "M. A. Pai, Energy Function Analysis for Power System Stability, 1989",
+    "athay_1979": "Athay, Podmore, Virmani, A Practical Method for the Direct Analysis of Transient Stability, 1979"
+  }
+}

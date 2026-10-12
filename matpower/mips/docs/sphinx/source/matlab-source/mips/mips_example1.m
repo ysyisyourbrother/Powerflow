@@ -1,1 +1,0 @@
-../../../../../examples/mips_example1.m

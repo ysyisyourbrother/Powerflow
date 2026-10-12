@@ -1,1 +1,0 @@
-../../../../../lib/t/generate_autodoc_stubs.m
