@@ -13,14 +13,14 @@ PYPOWER 的 `runpf` 返回值确实不含这个字段。迭代次数只在 `VERB
 想程序化获取可以：
 
 - 用自研求解器（`solve_newton_raphson` 返回 `result.iterations`）；
-- 用 Pandapower（`net._ppc["iterations"]`）；
 - 自己在循环里调 `pypower.newtonpf`。
 
-### Q3：`calculate_voltage_angles` 是什么？
+### Q3：母线编号 1-39 和内部索引是什么关系？
 
-Pandapower 的 `runpp` **默认不计算电压相角**（`calculate_voltage_angles=False`），
-因为配电网络通常不需要相角。但输电网分析必须要，所以一定要显式设成 `True`，
-否则 `res_bus.va_degree` 会全是 0，你会以为算错了。
+PYPOWER 读入后会先把母线**重新连续编号**并转成 0 基，这就是 `ext2int`。
+所以内部的 `bus 0` 对应外部母线 `1`，`ref/pv/pq` 里存的也都是内部索引。
+拿结果前记得用 `int2ext` 换回原始编号，否则对着 39 号母线找 39 号结果
+会差一位。
 
 ### Q4：为什么电压结果超过了 1.06 pu 的上限？
 

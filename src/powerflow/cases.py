@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from pandapower.converter.pypower.from_ppc import from_ppc
 from pypower.api import (
     bustypes,
     case9,
+    case39,
     ext2int,
     int2ext,
     makeSbus,
@@ -20,7 +20,7 @@ from pypower.api import (
     runpf,
 )
 from pypower.idx_brch import QT
-from pypower.idx_bus import BUS_TYPE, PQ, VA, VM
+from pypower.idx_bus import BUS_I, BUS_TYPE, PQ, VA, VM
 from pypower.idx_gen import GEN_BUS, GEN_STATUS, VG
 
 from .newton_raphson import NewtonResult, solve_newton_raphson
@@ -59,7 +59,7 @@ class PowerFlowProblem:
         return self.bus.shape[0]
 
 
-def _pad_branch_columns(ppc: dict[str, Any]) -> dict[str, Any]:
+def pad_branch_columns(ppc: dict[str, Any]) -> dict[str, Any]:
     """补齐 PF/QF/PT/QT 列，使输入也能直接交给 pfsoln。"""
 
     ppc = copy.deepcopy(ppc)
@@ -91,10 +91,10 @@ def _initial_voltage(ppci: dict[str, Any], pq: np.ndarray) -> np.ndarray:
     return V0.astype(complex)
 
 
-def prepare_case9() -> PowerFlowProblem:
-    """读取 PYPOWER 自带的 case9，并建立完整内部数据结构。"""
+def prepare_case(ppc: dict[str, Any]) -> PowerFlowProblem:
+    """把任意 PYPOWER 算例转换到内部连续编号，并建立完整数据结构。"""
 
-    ppc = _pad_branch_columns(case9())
+    ppc = pad_branch_columns(ppc)
     ppci = ext2int(copy.deepcopy(ppc))
     base_mva = float(ppci["baseMVA"])
     Ybus, Yf, Yt = makeYbus(base_mva, ppci["bus"], ppci["branch"])
@@ -114,6 +114,57 @@ def prepare_case9() -> PowerFlowProblem:
         pq=np.asarray(pq, dtype=int),
         V0=V0,
     )
+
+
+def external_bus_rows(problem: PowerFlowProblem) -> np.ndarray:
+    """内部行号 → ``problem.ppc["bus"]`` 的行号。
+
+    ``ext2int`` 会把母线重排成连续编号，所以 ``ppci["bus"]`` 的第 i 行
+    并不对应 ``ppc["bus"]`` 的第 i 行。要同时更新两份数据时，
+    必须先过这层映射。
+
+    ``ppci["order"]["bus"]["i2e"][i]`` 给出内部行 i 的**外部母线编号**，
+    再用编号去 ``ppc["bus"]`` 里查行。按编号查而不是按位置算，
+    是为了不依赖"外部编号恰好是 1..n 连续"这个巧合。
+    """
+
+    external_ids = problem.ppc["bus"][:, BUS_I].astype(int)
+    row_of_number = {int(number): row for row, number in enumerate(external_ids.tolist())}
+    i2e = np.asarray(problem.ppci["order"]["bus"]["i2e"], dtype=int)
+    return np.asarray([row_of_number[int(number)] for number in i2e], dtype=int)
+
+
+def flat_start(ppc: dict[str, Any]) -> dict[str, Any]:
+    """深拷贝 ``ppc``，并把 bus 的 VM/VA 抹平成 ``1.0 / 0.0``。
+
+    PYPOWER 的许多算例（例如 ``case39``）自带的 ``VM``/``VA`` 本身就是一组
+    已求解的潮流结果。若直接拿它当启动点，牛顿法一次迭代就收敛，"迭代次数"
+    这类元数据会失去意义。做数据生成时必须先抹掉。
+    """
+
+    flat = copy.deepcopy(ppc)
+    flat["bus"] = np.asarray(flat["bus"], dtype=float)
+    flat["bus"][:, VM] = 1.0
+    flat["bus"][:, VA] = 0.0
+    return flat
+
+
+def prepare_case9() -> PowerFlowProblem:
+    """读取 PYPOWER 自带的 case9，并建立完整内部数据结构。"""
+
+    return prepare_case(case9())
+
+
+def prepare_case39(*, flat: bool = True) -> PowerFlowProblem:
+    """读取 PYPOWER 自带的 case39，并建立完整内部数据结构。
+
+    ``flat=True``（默认）会先抹掉算例自带的那组解，改用平启动。
+    此时内部初值为：PQ 母线 ``|V0| = 1.0``、PV 与平衡母线 ``|V0| = VG``、
+    所有母线相角为 0。
+    """
+
+    ppc = case39()
+    return prepare_case(flat_start(ppc) if flat else ppc)
 
 
 def build_external_result(
@@ -167,36 +218,21 @@ def solve_case9(
     return problem, result, external
 
 
+def run_pypower_pf(
+    ppc: dict[str, Any],
+    tol: float = 1e-10,
+    max_iter: int = 40,
+) -> tuple[dict[str, Any], bool]:
+    """用 PYPOWER 自带牛顿法求解任意 ``ppc``，作为独立参照实现。"""
+
+    options = ppoption(VERBOSE=0, OUT_ALL=0, PF_ALG=1, PF_TOL=tol, PF_MAX_IT=max_iter)
+    return runpf(pad_branch_columns(ppc), options)
+
+
 def run_pypower_case9(
     tol: float = 1e-10,
     max_iter: int = 20,
 ) -> tuple[dict[str, Any], bool]:
     """使用 PYPOWER 自带牛顿法求解，作为教学代码的参考实现。"""
 
-    options = ppoption(VERBOSE=0, OUT_ALL=0, PF_ALG=1, PF_TOL=tol, PF_MAX_IT=max_iter)
-    return runpf(_pad_branch_columns(case9()), options)
-
-
-def run_pandapower_case9(
-    tol_mva: float = 1e-10,
-    max_iter: int = 20,
-):
-    """把同一个 PYPOWER case9 转成 Pandapower 网络并运行牛顿法。
-
-    使用同一个源算例可以排除“两个库自带 case9 编号不同”造成的干扰。
-    """
-
-    import pandapower as pp
-
-    problem = prepare_case9()
-    net = from_ppc(copy.deepcopy(problem.ppc), f_hz=60)
-    pp.runpp(
-        net,
-        algorithm="nr",
-        calculate_voltage_angles=True,
-        init="flat",
-        tolerance_mva=tol_mva,
-        max_iteration=max_iter,
-        numba=False,
-    )
-    return net
+    return run_pypower_pf(case9(), tol=tol, max_iter=max_iter)

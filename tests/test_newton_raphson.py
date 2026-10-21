@@ -6,7 +6,6 @@ from powerflow import (
     build_external_result,
     jacobian_polar,
     prepare_case9,
-    run_pandapower_case9,
     run_pypower_case9,
     solve_newton_raphson,
 )
@@ -34,17 +33,12 @@ def test_jacobian_matches_pypower_complex_derivative():
     assert np.max(np.abs(J - reference)) < 1e-12
 
 
-def test_custom_matches_pypower_and_pandapower():
+def test_custom_matches_pypower():
     problem = prepare_case9()
     result = solve_newton_raphson(problem)
     custom = build_external_result(problem, result)
     pypower, success = run_pypower_case9()
-    pandapower = run_pandapower_case9()
 
     assert success
-    assert pandapower.converged
     assert np.max(np.abs(custom["bus"][:, VM] - pypower["bus"][:, VM])) < 1e-9
     assert np.max(np.abs(custom["bus"][:, VA] - pypower["bus"][:, VA])) < 1e-7
-    assert np.max(
-        np.abs(custom["bus"][:, VM] - pandapower.res_bus["vm_pu"].to_numpy())
-    ) < 1e-8

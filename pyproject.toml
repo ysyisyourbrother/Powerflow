@@ -5,19 +5,19 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "powerflow-study"
 version = "0.1.0"
-description = "基于 PYPOWER 与 Pandapower 的潮流计算教学项目"
+description = "基于 PYPOWER 的潮流计算教学项目"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "numpy>=1.26,<3",
   "scipy>=1.11,<2",
   "pypower>=5.1,<6",
-  "pandapower>=3,<4",
   "matplotlib>=3.8,<4",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
+ml = ["torch>=2.7"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

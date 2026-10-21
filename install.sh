@@ -32,4 +32,4 @@ echo "==> 运行环境自检"
 echo
 echo "安装完成。以后运行示例："
 echo "  .venv/bin/python src/examples/step1_case9.py"
-echo "  .venv/bin/python src/examples/step2_pandapower.py"
+echo "  .venv/bin/python src/examples/step3_case39.py"

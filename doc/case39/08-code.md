@@ -7,28 +7,30 @@
 | 文件 | 作用 |
 |---|---|
 | [src/examples/step3_case39.py](../../src/examples/step3_case39.py) | 本教程的完整可运行示例（六步） |
-| [dump_case39_tables.py](../../dump_case39_tables.py) | 打印本教程第一部分的所有数据表 |
-| [dump_case39_solution.py](../../dump_case39_solution.py) | 打印本教程第三部分的所有结果表 |
+| [dump_case39_tables.py](dump_case39_tables.py) | 打印本教程第一部分的所有数据表 |
+| [dump_case39_solution.py](dump_case39_solution.py) | 打印本教程第三部分的所有结果表 |
 | [src/examples/case9_result.png](../../src/examples/case9_result.png) | case9 的网络图（对比参考） |
 
 ## 4.2 运行
 
-```bash
-cd /Users/brandonye/CodeSpace/Powerflow
+在仓库根目录运行：
 
+```bash
 # 完整教程示例（约 10 秒）
 MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python src/examples/step3_case39.py
 
-# 原始数据表
-MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python dump_case39_tables.py
+# 原始数据表（脚本会自动定位 src/，也可从其他目录运行）
+MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python doc/case39/dump_case39_tables.py
 
 # 结果表
-MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python dump_case39_solution.py
+MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python doc/case39/dump_case39_solution.py
 ```
+
+如果使用已激活的 conda 环境，把 `.venv/bin/python` 换成 `python` 即可。
 
 ## 4.3 `step3_case39.py` 的结构
 
-脚本分成清晰的六步，建议对照本教程逐段阅读：
+脚本按 `第 N 步` 打印分隔标题，建议对照本教程逐段阅读：
 
 | 步骤 | 函数 | 对应章节 |
 |---|---|---|
@@ -36,10 +38,9 @@ MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python dump_case39_solution.py
 | 2 | `solve_with_pypower()` | 2.8 节：PYPOWER 求解 |
 | 3 | `solve_with_custom_newton()` | 2.5 ~ 2.7 节：牛顿法原理 |
 | 3b | `flat_start_experiment()` | 2.10 节：平启动与二次收敛 |
-| 4 | `solve_with_pandapower()` | 2.11 节：Pandapower |
-| 5 | `show_results()` | 第三部分：结果解读 |
-| 5b | `reactive_balance()` | 3.4 节：无功平衡拆解 |
-| 6 | `compare_backends()` | 2.12 节：三路交叉验证 |
+| 4 | `show_results()` | 第三部分：结果解读 |
+| 5 | `reactive_balance()` | 3.4 节：无功平衡拆解 |
+| 6 | `compare_backends()` | 2.11 节：两路交叉验证 |
 
 脚本里有三个可复用的工具函数，值得单独理解：
 

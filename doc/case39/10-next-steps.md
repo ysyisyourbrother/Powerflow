@@ -26,15 +26,15 @@
 
 | 文件 | 内容 |
 |---|---|
-| [powerflow-textbook/00-learning-map.md](../../powerflow-textbook/00-learning-map.md) | 学习地图 |
-| [powerflow-textbook/02-data-model-and-per-unit.md](../../powerflow-textbook/02-data-model-and-per-unit.md) | 数据模型与标幺值 |
-| [powerflow-textbook/03-ybus-network-equations.md](../../powerflow-textbook/03-ybus-network-equations.md) | Ybus 与网络方程 |
-| [powerflow-textbook/04-power-balance-and-unknowns.md](../../powerflow-textbook/04-power-balance-and-unknowns.md) | 功率平衡与未知量 |
-| [powerflow-textbook/05-newton-raphson.md](../../powerflow-textbook/05-newton-raphson.md) | 牛顿-拉夫逊法（重点） |
-| [powerflow-textbook/07-jacobian.md](../../powerflow-textbook/07-jacobian.md) | 雅可比矩阵推导 |
-| [powerflow-textbook/08-solution-recovery.md](../../powerflow-textbook/08-solution-recovery.md) | 结果回算 |
-| [doc/case9-guide.md](../case9-guide.md) | IEEE 9 节点详解（更简单的入门算例） |
-| [doc/powerflow-newton.md](../powerflow-newton.md) | 自研牛顿法代码剖析 |
+| [powerflow-textbook/00-learning-map.md](../powerflow-textbook/00-learning-map.md) | 学习地图 |
+| [powerflow-textbook/01-background-and-case9.md](../powerflow-textbook/01-background-and-case9.md) | 潮流问题与 IEEE 9 节点入门 |
+| [powerflow-textbook/02-data-model-and-per-unit.md](../powerflow-textbook/02-data-model-and-per-unit.md) | 数据模型与标幺值 |
+| [powerflow-textbook/03-ybus-network-equations.md](../powerflow-textbook/03-ybus-network-equations.md) | Ybus 与网络方程 |
+| [powerflow-textbook/04-power-balance-and-unknowns.md](../powerflow-textbook/04-power-balance-and-unknowns.md) | 功率平衡与未知量 |
+| [powerflow-textbook/05-newton-raphson.md](../powerflow-textbook/05-newton-raphson.md) | 牛顿-拉夫逊法（重点） |
+| [powerflow-textbook/06-newton-code-walkthrough.md](../powerflow-textbook/06-newton-code-walkthrough.md) | 自研牛顿法代码逐行剖析 |
+| [powerflow-textbook/07-jacobian.md](../powerflow-textbook/07-jacobian.md) | 雅可比矩阵推导 |
+| [powerflow-textbook/08-solution-recovery.md](../powerflow-textbook/08-solution-recovery.md) | 结果回算 |
 
 **推荐路径**：先用 case9 弄懂原理（3 机 9 节点，看得清），
 再用本教程的 case39 练手（10 机 39 节点，接近真实电网规模）。
@@ -44,11 +44,22 @@
 本项目的 IEEE 39 节点数据已整理归档在
 [dataset/ieee39/README.md](../../dataset/ieee39/README.md)，包含：
 
-- 原始 CSV、JSON、NPZ（PYPOWER 与 Pandapower 两套表示）；
+- 原始 CSV、JSON、NPZ（PYPOWER 数据表）；
 - 参考潮流结果（母线、发电机、支路潮流）；
-- SHA-256 校验和，可验证数据未被改动。
+- SHA-256 校验和，可验证数据未被改动；
+- 赛事对齐数据集 `competition_v1`：2000 条样本，输入是带掩码的节点
+  净注入 P/Q 和电压幅值 V，输出是全部节点 Vm 和全部支路 Δθ/Pf/Pt/Qf/Qt。
 
-当你想脱离 Python 库、直接用 CSV 读数据做题时，用这个目录。
+三个入口：
+
+- [数据集完整教程](../../dataset/competition-dataset-guide.md)：从算例、字段、
+  掩码一路讲到打标、读取和训练建议。
+- [赛事对齐数据集说明](../../dataset/ieee39/processed/competition_v1/README.md)：
+  字段、单位、统计量、生成命令、已知局限。
+- [数据集总入口](../../dataset/README.md)：数据布局、字段约定与生成方式。
+
+当你想脱离 Python 库、直接用 CSV 读数据做题时，用原始数据目录；
+当你想训练/评测模型时，用 `competition_v1`。
 
 ## 6.4 继续深入的方向
 

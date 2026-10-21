@@ -94,16 +94,14 @@ def print_power_balance(result: dict) -> None:
 def print_voltage_comparison(
     custom: dict,
     pypower: dict,
-    pandapower_net,
 ) -> None:
-    print("bus   custom Vm   PYPOWER Vm   Pandapower Vm   max|ΔVm|")
-    print("---   ---------   -----------   --------------   ---------")
+    print("bus   custom Vm   PYPOWER Vm   max|ΔVm|")
+    print("---   ---------   -----------   ---------")
     pp_vm = pypower["bus"][:, VM]
-    pandapower_vm = pandapower_net.res_bus["vm_pu"].to_numpy()
     for index, row in enumerate(custom["bus"]):
         number = int(row[BUS_I])
-        difference = max(abs(row[VM] - pp_vm[index]), abs(row[VM] - pandapower_vm[index]))
+        difference = abs(row[VM] - pp_vm[index])
         print(
             f"{number:3d}   {row[VM]:9.6f}   {pp_vm[index]:11.6f}   "
-            f"{pandapower_vm[index]:14.6f}   {difference:9.2e}"
+            f"{difference:9.2e}"
         )

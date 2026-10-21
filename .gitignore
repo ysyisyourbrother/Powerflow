@@ -6,6 +6,7 @@ __pycache__/
 .pytest_cache/
 
 # 运行生成物
+runs/
 *.png
 !src/examples/case9_result.png
 !src/examples/case39_result.png
@@ -27,3 +28,13 @@ htmlcov/
 # 本地敏感配置
 .env
 .env.local
+
+# 生成的数据集：只入库生成脚本与说明，产物按需重跑。
+# 逐类排除产物，而不是排除整个 processed/ 目录——一旦排除了某个目录，
+# git 就不再往里看，README 这类文件会被连带忽略，且无法用 ! 救回来。
+dataset/**/processed/**/samples/
+dataset/**/processed/**/topology/
+dataset/**/processed/**/config.json
+dataset/**/processed/**/manifest.json
+dataset/**/processed/**/stats.json
+dataset/**/processed/**/checksums.sha256

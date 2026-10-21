@@ -1,0 +1,4 @@
+# GNN 训练依赖。RTX 5090 需要 CUDA 12.8 及以上的 PyTorch wheel：
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+# 其他 GPU 请按 https://pytorch.org/get-started/locally/ 选择对应版本。
+torch>=2.7

@@ -1,10 +1,10 @@
-"""导出本机 PYPOWER/Pandapower 自带的 IEEE 39 节点原始数据和参考解。
+"""导出本机 PYPOWER 自带的 IEEE 39 节点原始数据和参考解。
 
 运行：
 
     .venv/bin/python dataset/ieee39/scripts/export_ieee39.py
 
-该脚本不修改源数据，只把两个库中的数据表和求解结果写入 dataset/ieee39/。
+该脚本不修改源数据，只把 PYPOWER 中的数据表和求解结果写入 dataset/ieee39/。
 """
 
 from __future__ import annotations
@@ -12,17 +12,14 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
-import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
-from pandapower.converter.pypower.from_ppc import from_ppc
-from pandapower.networks import case39 as pandapower_case39
 from pypower.api import case39 as pypower_case39
-from pypower.api import int2ext, ppoption, runpf
+from pypower.api import ppoption, runpf
 from pypower.idx_brch import (
     ANGMAX,
     ANGMIN,
@@ -81,15 +78,11 @@ from pypower.idx_gen import (
     VG,
 )
 
-import pandapower as pp
-
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "raw"
 REFERENCE = ROOT / "reference"
 PYPOWER_RAW = RAW / "pypower"
-PANDAPOWER_RAW = RAW / "pandapower"
-PANDAPOWER_TABLES = PANDAPOWER_RAW / "tables"
 
 PYPOWER_BUS_COLUMNS = [
     ("bus_i", BUS_I),
@@ -221,54 +214,6 @@ def export_pypower() -> dict[str, Any]:
     return {"bus": len(ppc["bus"]), "gen": len(ppc["gen"]), "branch": len(ppc["branch"])}
 
 
-def export_pandapower() -> dict[str, Any]:
-    PANDAPOWER_RAW.mkdir(parents=True, exist_ok=True)
-    PANDAPOWER_TABLES.mkdir(parents=True, exist_ok=True)
-    net = pandapower_case39()
-
-    source_json = (
-        Path(inspect.getsourcefile(pandapower_case39)).with_name(
-            "power_system_test_case_jsons"
-        )
-        / "case39.json"
-    )
-    raw_json = source_json.read_text(encoding="utf-8")
-    (PANDAPOWER_RAW / "case39.json").write_text(
-        raw_json.replace("\r\n", "\n").replace("\r", "\n"),
-        encoding="utf-8",
-    )
-
-    table_index: dict[str, Any] = {}
-    core_tables = [
-        "bus", "load", "gen", "ext_grid", "line", "trafo",
-        "shunt", "sgen", "ward", "xward", "impedance", "poly_cost",
-    ]
-    for name in core_tables:
-        value = getattr(net, name, None)
-        if not isinstance(value, pd.DataFrame):
-            continue
-        target = PANDAPOWER_TABLES / f"{name}.csv"
-        value.to_csv(target, index=True, index_label="index", float_format="%.15g")
-        table_index[name] = {
-            "rows": len(value),
-            "columns": list(value.columns),
-            "csv": str(target.relative_to(ROOT)),
-        }
-
-    (PANDAPOWER_RAW / "table_index.json").write_text(
-        json.dumps(table_index, indent=2, ensure_ascii=False, default=_json_default),
-        encoding="utf-8",
-    )
-    return {
-        "bus": len(net.bus),
-        "load": len(net.load),
-        "gen": len(net.gen),
-        "ext_grid": len(net.ext_grid),
-        "line": len(net.line),
-        "trafo": len(net.trafo),
-    }
-
-
 def export_reference_solution() -> dict[str, Any]:
     REFERENCE.mkdir(parents=True, exist_ok=True)
     ppc = pypower_case39()
@@ -295,48 +240,20 @@ def export_reference_solution() -> dict[str, Any]:
         REFERENCE / "branch_solution_pypower.csv", index=False, float_format="%.12g"
     )
 
-    net = pandapower_case39()
-    pp.runpp(
-        net,
-        algorithm="nr",
-        calculate_voltage_angles=True,
-        tolerance_mva=1e-10,
-        max_iteration=30,
-        numba=False,
-    )
-    net.res_bus.reset_index(names="bus_index").to_csv(
-        REFERENCE / "bus_solution_pandapower.csv", index=False, float_format="%.12g"
-    )
-    net.res_gen.to_csv(REFERENCE / "gen_solution_pandapower.csv", index=False, float_format="%.12g")
-    net.res_ext_grid.to_csv(
-        REFERENCE / "ext_grid_solution_pandapower.csv", index=False, float_format="%.12g"
-    )
-    net.res_line.to_csv(
-        REFERENCE / "line_solution_pandapower.csv", index=False, float_format="%.12g"
-    )
-    net.res_trafo.to_csv(
-        REFERENCE / "trafo_solution_pandapower.csv", index=False, float_format="%.12g"
-    )
-
     total_load = float(result["bus"][:, PD].sum())
     total_gen = float(result["gen"][:, PG].sum())
     summary = {
-        "source": "PYPOWER case39 + Pandapower case39",
+        "source": "PYPOWER case39",
         "network": "IEEE 39-bus New England system",
         "baseMVA": float(result["baseMVA"]),
         "buses": int(result["bus"].shape[0]),
         "generators": int(result["gen"].shape[0]),
-        "branches_pypower": int(result["branch"].shape[0]),
-        "lines_pandapower": int(net.line.shape[0]),
-        "transformers_pandapower": int(net.trafo.shape[0]),
-        "loads_pandapower": int(net.load.shape[0]),
+        "branches": int(result["branch"].shape[0]),
         "load_mw": total_load,
         "load_mvar": float(result["bus"][:, QD].sum()),
         "generation_mw": total_gen,
         "loss_mw": total_gen - total_load,
-        "pypower_success": bool(success),
-        "pandapower_converged": bool(net.converged),
-        "pandapower_iterations": int(net._ppc.get("iterations", -1)),
+        "success": bool(success),
         "vm_min_pu": float(result["bus"][:, VM].min()),
         "vm_max_pu": float(result["bus"][:, VM].max()),
         "va_min_degree": float(result["bus"][:, VA].min()),
@@ -360,19 +277,16 @@ def write_checksums() -> None:
 
 def main() -> None:
     pypower_counts = export_pypower()
-    pandapower_counts = export_pandapower()
     summary = export_reference_solution()
     write_checksums()
     manifest = {
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "pypower": pypower_counts,
-        "pandapower": pandapower_counts,
         "reference_solution": summary,
         "raw_root": str(RAW.relative_to(ROOT)),
         "checksums": "checksums.sha256",
         "upstream_references": {
             "pypower_case39": "https://github.com/rwl/PYPOWER/blob/master/pypower/case39.py",
-            "pandapower_case39": "https://github.com/e2nIEE/pandapower/blob/develop/pandapower/networks/power_system_test_case_jsons/case39.json",
             "original_1970_report": "Bills et al., On-Line Stability Analysis Study, EEI RP90-1, 1970",
             "pai_1989": "M. A. Pai, Energy Function Analysis for Power System Stability, 1989",
             "athay_1979": "Athay, Podmore, Virmani, A Practical Method for the Direct Analysis of Transient Stability, 1979",

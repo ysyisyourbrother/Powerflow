@@ -1,6 +1,6 @@
-# 2.8 ~ 2.12　求解实战：PYPOWER、收敛过程与交叉验证
+# 2.8 ~ 2.11　求解实战：PYPOWER、收敛过程与交叉验证
 
-> PYPOWER 求解代码、为什么只迭代 1 次、平启动的二次收敛、Pandapower
+> PYPOWER 求解代码、为什么只迭代 1 次、平启动的二次收敛
 
 ## 2.8 用 PYPOWER 求解（主路径）
 
@@ -148,74 +148,27 @@ result_flat, success_flat = runpf(flat, options)
 
 ![IEEE 39 节点平启动牛顿法收敛曲线](../../src/examples/case39_convergence.png)
 
-## 2.11 Pandapower 路径
+## 2.11 两条路径交叉验证
 
-Pandapower 是另一个工程化潮流库，建模方式和 PYPOWER 不同（用 `net.line`、
-`net.trafo`、`net.load` 等多张表），但底层解的是同一个方程组。
-
-```python
-import pandapower as pp
-import pandapower.networks as pn
-
-net = pn.case39()                    # 读取算例
-
-pp.runpp(
-    net,
-    algorithm="nr",                  # Newton-Raphson
-    calculate_voltage_angles=True,   # 计算相角（默认 False！）
-    tolerance_mva=1e-10,             # 容差，单位是 MVA 而不是 pu
-    numba=False,                     # 关掉 JIT 加速，便于调试
-)
-```
-
-实际输出：
-
-```text
-收敛 converged = True
-迭代次数        = 4
-母线电压范围    = 0.9820 ~ 1.0636 pu
-总有功损耗      = 43.6411 MW
-```
-
-**为什么 Pandapower 是 4 次而 PYPOWER 是 1 次？**
-
-因为 Pandapower 在把 `case39` 转成自己的网络时**丢弃了 PYPOWER 的电压初值**，
-用的是平启动。4 次迭代的结果和 2.10 节的平启动实验**完全一致**——这两个
-独立的实现互相验证了。
-
-> **两个容易踩的坑**：
-> 1. `calculate_voltage_angles=True` 必须显式设置，否则 Pandapower 默认
->    不计算相角，`res_bus.va_degree` 全是 0。
-> 2. Pandapower 的容差单位是 **MVA**（`tolerance_mva`），不是标幺值。
->    设 1e-10 MVA ≈ 1e-12 pu，所以它比 PYPOWER 的 1e-10 pu 更严格。
->    这是它写出 4 次而不是 3 次的部分原因。
-
-## 2.12 三条路径交叉验证
-
-这是**自学潮流计算最重要的一步**：用三个独立实现解同一个算例，看结果是否一致。
+这是**自学潮流计算最重要的一步**：用两个独立实现解同一个算例，看结果是否一致。
 
 | 路径 | 实现 | 迭代次数 | 迭代起点 |
 |---|---|---:|---|
 | A | PYPOWER `runpf` | 1 | 算例自带初值 |
 | B | 项目自研极坐标牛顿法 | 1 | 算例自带初值 |
 | B' | 项目自研极坐标牛顿法（平启动） | 4 | Vm=1.0, θ=0 |
-| C | Pandapower `runpp` | 4 | 平启动 |
 
 电压结果对比：
 
 ```text
 PYPOWER  vs 自研牛顿法：
   电压幅值最大差异 = 2.220e-16 pu
-  电压相角最大差异 = 6.606e-15 度
-
-PYPOWER  vs Pandapower：
-  电压幅值最大差异 = 2.909e-14 pu
-  电压相角最大差异 = 1.227e-12 度
+  电压相角最大差异 = 5.329e-15 度
 ```
 
 **2.2e-16 就是双精度浮点数的机器精度（约 2.2e-16）。** 也就是说自研求解器和
-PYPOWER 的结果在浮点意义下**完全相同**。和 Pandapower 的差异在 1e-14 量级，
-来自容差设置和变压器建模细节的不同，同样是完全可接受的。
+PYPOWER 的结果在浮点意义下**完全相同**。一个自己写的教学实现，能和成熟库
+逐位对齐，这就是最强的一致性证据。
 
 **能做这个对比，就说明你的结果是可信的。**
 

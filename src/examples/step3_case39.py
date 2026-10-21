@@ -1,10 +1,9 @@
 """IEEE 39 节点 New England 系统潮流计算完整示例。
 
-一个算例，三条求解路径，互相验证：
+一个算例，两条求解路径，互相验证：
 
 1. PYPOWER ``runpf``          —— 成熟参考实现（推荐首选）
-2. Pandapower ``runpp``       —— 工程化建模与结果表，交叉验证
-3. 项目自研极坐标牛顿法       —— 逐次迭代完全可观察，用于学习
+2. 项目自研极坐标牛顿法       —— 逐次迭代完全可观察，用于学习
 
 运行::
 
@@ -21,15 +20,15 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from powerflow import PowerFlowProblem, solve_newton_raphson  # noqa: E402
+from powerflow import (  # noqa: E402
+    pad_branch_columns,
+    prepare_case,
+    solve_newton_raphson,
+)
 from powerflow.plotting import plot_power_flow  # noqa: E402
 from pypower.api import (  # noqa: E402
-    bustypes,
     case39,
-    ext2int,
     int2ext,
-    makeSbus,
-    makeYbus,
     pfsoln,
     ppoption,
     runpf,
@@ -58,7 +57,6 @@ from pypower.idx_bus import (  # noqa: E402
 )
 from pypower.idx_gen import (  # noqa: E402
     GEN_BUS,
-    GEN_STATUS,
     PG,
     PMAX,
     PMIN,
@@ -75,52 +73,8 @@ MAX_IT = 20
 # --------------------------------------------------------------------------
 # 工具函数
 # --------------------------------------------------------------------------
-def pad_branch_columns(ppc: dict) -> dict:
-    """补齐 branch 的 PF/QF/PT/QT 列，保证能直接交给 pfsoln。"""
-    ppc = copy.deepcopy(ppc)
-    ppc["bus"] = np.asarray(ppc["bus"], dtype=float)
-    ppc["gen"] = np.asarray(ppc["gen"], dtype=float)
-    ppc["branch"] = np.asarray(ppc["branch"], dtype=float)
-    branch = ppc["branch"]
-    if branch.shape[1] <= QT:
-        ppc["branch"] = np.c_[
-            branch, np.zeros((branch.shape[0], QT - branch.shape[1] + 1))
-        ]
-    return ppc
-
-
-def prepare_case(ppc: dict) -> PowerFlowProblem:
-    """把任意 PYPOWER 算例转换成自研求解器需要的内部数据结构。"""
-
-    ppc = pad_branch_columns(ppc)
-    ppci = ext2int(copy.deepcopy(ppc))
-    base_mva = float(ppci["baseMVA"])
-    Ybus, Yf, Yt = makeYbus(base_mva, ppci["bus"], ppci["branch"])
-    Sbus = makeSbus(base_mva, ppci["bus"], ppci["gen"])
-    ref, pv, pq = bustypes(ppci["bus"], ppci["gen"])
-
-    bus = ppci["bus"]
-    V0 = bus[:, VM].astype(complex) * np.exp(1j * np.deg2rad(bus[:, VA]))
-    # 非 PQ 母线的电压幅值以发电机设定值为准
-    on = ppci["gen"][:, GEN_STATUS] > 0
-    for gen_bus, vg in zip(ppci["gen"][on, GEN_BUS], ppci["gen"][on, VG]):
-        idx = int(gen_bus)
-        if idx not in pq:
-            V0[idx] = vg * np.exp(1j * np.angle(V0[idx]))
-
-    return PowerFlowProblem(
-        base_mva=base_mva,
-        ppc=ppc,
-        ppci=ppci,
-        Ybus=Ybus,
-        Yf=Yf,
-        Yt=Yt,
-        Sbus=Sbus,
-        ref=np.asarray(ref, dtype=int),
-        pv=np.asarray(pv, dtype=int),
-        pq=np.asarray(pq, dtype=int),
-        V0=V0,
-    )
+# ``pad_branch_columns`` 与 ``prepare_case`` 已提升进 powerflow 包，
+# 这里直接复用，避免 examples 与包内实现漂移。
 
 
 def separator(title: str = "") -> None:
@@ -302,7 +256,7 @@ def plot_convergence(result, outfile: Path) -> Path:
 def reactive_balance(result: dict) -> None:
     """拆解网络无功平衡：线路充电发出的无功 vs 串联电抗消耗的无功。"""
 
-    separator("第 5b 步：无功平衡拆解（为什么网损无功是负的）")
+    separator("第 5 步：无功平衡拆解（为什么网损无功是负的）")
 
     bus, branch = result["bus"], result["branch"]
     vm = bus[:, VM]
@@ -324,35 +278,10 @@ def reactive_balance(result: dict) -> None:
 
 
 # --------------------------------------------------------------------------
-# 4. 求解路径 C：Pandapower
-# --------------------------------------------------------------------------
-def solve_with_pandapower():
-    separator("第 4 步：求解路径 C —— Pandapower runpp（交叉验证）")
-
-    import pandapower as pp
-    import pandapower.networks as pn
-
-    net = pn.case39()
-    pp.runpp(
-        net,
-        algorithm="nr",
-        calculate_voltage_angles=True,
-        tolerance_mva=TOL,
-        numba=False,
-    )
-    print(f"收敛 converged = {net.converged}")
-    print(f"迭代次数        = {net._ppc['iterations']}")
-    print(f"母线电压范围    = {net.res_bus.vm_pu.min():.4f} ~ "
-          f"{net.res_bus.vm_pu.max():.4f} pu")
-    print(f"总有功损耗      = {net.res_line.pl_mw.sum() + net.res_trafo.pl_mw.sum():.4f} MW")
-    return net
-
-
-# --------------------------------------------------------------------------
-# 5. 结果展示
+# 4. 结果展示
 # --------------------------------------------------------------------------
 def show_results(result: dict) -> None:
-    separator("第 5 步：结果解读")
+    separator("第 4 步：结果解读")
 
     bus, gen, branch = result["bus"], result["gen"], result["branch"]
     base = float(result["baseMVA"])
@@ -416,28 +345,22 @@ def show_results(result: dict) -> None:
           f"损耗 = {loss_mw / base:.6f} pu")
 
 
-def compare_backends(pypower_result: dict, custom_external: dict, net) -> None:
-    separator("第 6 步：三条路径结果对照")
+def compare_backends(pypower_result: dict, custom_external: dict) -> None:
+    separator("第 6 步：两条路径结果对照")
 
     pp_bus = pypower_result["bus"]
     cm_bus = custom_external["bus"]
-    pd_bus = net.res_bus
 
     vm_pp = pp_bus[:, VM]
     vm_cm = cm_bus[:, VM]
-    vm_pd = pd_bus.vm_pu.to_numpy()
 
     va_pp = pp_bus[:, VA]
     va_cm = cm_bus[:, VA]
-    va_pd = pd_bus.va_degree.to_numpy()
 
     order = np.argsort(pp_bus[:, BUS_I].astype(int))
-    print(f"PYPOWER  vs 自研牛顿法：")
+    print("PYPOWER  vs 自研牛顿法：")
     print(f"  电压幅值最大差异 = {np.max(np.abs(vm_pp[order] - vm_cm[order])):.3e} pu")
     print(f"  电压相角最大差异 = {np.max(np.abs(va_pp[order] - va_cm[order])):.3e}°")
-    print(f"PYPOWER  vs Pandapower：")
-    print(f"  电压幅值最大差异 = {np.max(np.abs(vm_pp[order] - vm_pd)):.3e} pu")
-    print(f"  电压相角最大差异 = {np.max(np.abs(va_pp[order] - va_pd)):.3e}°")
 
 
 # --------------------------------------------------------------------------
@@ -448,11 +371,10 @@ def main() -> None:
     pypower_result, success = solve_with_pypower(ppc)
     problem, custom_result, custom_external = solve_with_custom_newton(ppc)
     flat_result = flat_start_experiment(ppc)
-    net = solve_with_pandapower()
 
     show_results(pypower_result)
     reactive_balance(pypower_result)
-    compare_backends(pypower_result, custom_external, net)
+    compare_backends(pypower_result, custom_external)
 
     outfile = Path(__file__).with_name("case39_result.png")
     saved = plot_power_flow(

@@ -1,13 +1,8 @@
 # IEEE 39 节点系统原始数据
 
-本目录已经放入 IEEE 39 节点 New England 系统的原始数据、两套常用 Python
-数据表示和参考潮流结果。
+本目录已经放入 IEEE 39 节点 New England 系统的原始数据、参考潮流结果和导出脚本。
 
-位置：
-
-```text
-/Users/brandonye/CodeSpace/Powerflow/dataset/ieee39/
-```
+位置：仓库根目录下的 `dataset/ieee39/`。
 
 ## 1. 数据规模
 
@@ -21,22 +16,24 @@
 | 负荷有功 | 6254.23 MW |
 | 负荷无功 | 1387.10 Mvar |
 
-两套表示的差异：
+数据表示：
 
-| 数据源 | 表示方式 |
+| 表 | 内容 |
 |---|---|
-| PYPOWER | 39 母线 + 10 发电机 + 46 条 branch |
-| Pandapower | 39 母线 + 9 个 `gen` + 1 个 `ext_grid` + 35 条 line + 11 台 trafo |
+| `bus` | 39 个母线 |
+| `gen` | 10 台发电机 |
+| `branch` | 46 条支路 |
 
-PYPOWER 的 46 条支路中，包含 35 条普通线路和 11 台变压器等值支路。
-Pandapower 把它们拆成 `net.line` 与 `net.trafo`。
+PYPOWER 把线路和变压器统一放在 `branch` 表：46 条支路 = 34 条线路 +
+12 条变压器等值支路，靠 `tap_pu` 列区分（`tap_pu = 0` 表示线路）。
+这 12 条里有 1 条变比恰好为 1.0（23→36），电气上与线路等价，但类型仍为
+变压器支路；按“变比 ≠ 1”数则是 11 台真正改变电压的变压器。
 
 ## 2. 数据来源
 
-本数据从本机已安装的 Python 包中直接提取：
+本数据从本机已安装的 PYPOWER 中直接提取：
 
 - PYPOWER `5.1.21`：`pypower.case39`
-- Pandapower `3.5.6`：`pandapower.networks.case39`
 
 PYPOWER 数据文件是已求解的 New England 系统版本，包含以下处理：
 
@@ -57,7 +54,6 @@ PYPOWER 数据文件是已求解的 New England 系统版本，包含以下处�
 对应 Python 上游：
 
 - PYPOWER case39：<https://github.com/rwl/PYPOWER/blob/master/pypower/case39.py>
-- Pandapower case39：<https://github.com/e2nIEE/pandapower/blob/develop/pandapower/networks/power_system_test_cases.py>
 
 ## 3. 目录内容
 
@@ -67,37 +63,29 @@ dataset/ieee39/
 ├── manifest.json
 ├── checksums.sha256
 ├── raw/
-│   ├── pypower/
-│   │   ├── case39.json
-│   │   ├── pypower_case39_arrays.npz
-│   │   ├── bus.csv
-│   │   ├── gen.csv
-│   │   ├── branch.csv
-│   │   └── gencost.csv
-│   └── pandapower/
+│   └── pypower/
 │       ├── case39.json
-│       ├── table_index.json
-│       └── tables/
-│           ├── bus.csv
-│           ├── load.csv
-│           ├── gen.csv
-│           ├── ext_grid.csv
-│           ├── line.csv
-│           ├── trafo.csv
-│           └── ...
+│       ├── pypower_case39_arrays.npz
+│       ├── bus.csv
+│       ├── gen.csv
+│       ├── branch.csv
+│       └── gencost.csv
 ├── reference/
 │   ├── summary.json
 │   ├── bus_solution_pypower.csv
 │   ├── gen_solution_pypower.csv
-│   ├── branch_solution_pypower.csv
-│   ├── bus_solution_pandapower.csv
-│   ├── line_solution_pandapower.csv
-│   └── trafo_solution_pandapower.csv
+│   └── branch_solution_pypower.csv
+├── processed/
+│   └── competition_v1/         # 赛事对齐数据集（当前主用）
 └── scripts/
     └── export_ieee39.py
 ```
 
-## 4. PYPOWER 原始表
+赛事对齐数据集的字段、单位、生成命令和自检结果，见
+[`processed/competition_v1/README.md`](processed/competition_v1/README.md)；
+数据集总入口见 [`../README.md`](../README.md)。
+
+## 4. 原始表
 
 ### bus.csv
 
@@ -156,30 +144,7 @@ $$
 c2=0.01, c1=0.3, c0=0.2
 ```
 
-## 5. Pandapower 原始表
-
-Pandapower 原始网络已经保存为：
-
-```text
-raw/pandapower/case39.json
-```
-
-核心表：
-
-| 文件 | 内容 |
-|---|---|
-| `tables/bus.csv` | 39 个母线 |
-| `tables/load.csv` | 21 个负荷 |
-| `tables/gen.csv` | 9 个 PV 发电机 |
-| `tables/ext_grid.csv` | 1 个平衡发电机 |
-| `tables/line.csv` | 35 条线路 |
-| `tables/trafo.csv` | 11 台变压器 |
-| `tables/poly_cost.csv` | 发电成本 |
-
-编号注意：Pandapower 表索引从 0 开始。Pandapower 的 `bus index=0`
-对应 PYPOWER 的外部母线编号 `1`。
-
-## 6. 参考潮流结果
+## 5. 参考潮流结果
 
 求解设置：
 
@@ -193,12 +158,10 @@ raw/pandapower/case39.json
 
 | 指标 | 数值 |
 |---|---:|
-| PYPOWER 收敛 | true |
-| Pandapower 收敛 | true |
-| Pandapower 迭代 | 4 |
+| 收敛 | true |
 | 总负荷 | 6254.23 MW |
-| 总发电 | 6297.871125760813 MW |
-| 网络有功损耗 | 43.64112576081334 MW |
+| 总发电 | 6297.871125760811 MW |
+| 网络有功损耗 | 43.64112576081152 MW |
 | 最低电压 | 0.982 p.u. |
 | 最高电压 | 1.0636 p.u. |
 | 最低电压相角 | -14.535256° |
@@ -210,9 +173,9 @@ raw/pandapower/case39.json
 cat dataset/ieee39/reference/summary.json
 ```
 
-## 7. 直接加载
+## 6. 直接加载
 
-### PYPOWER
+### 从 PYPOWER 求解
 
 ```python
 from pypower.api import case39, runpf, ppoption
@@ -224,23 +187,7 @@ result, success = runpf(
 )
 ```
 
-### Pandapower
-
-```python
-import pandapower as pp
-import pandapower.networks as pn
-
-net = pn.case39()
-pp.runpp(
-    net,
-    algorithm="nr",
-    calculate_voltage_angles=True,
-    tolerance_mva=1e-10,
-    numba=False,
-)
-```
-
-### Pandas
+### 从 CSV 读取原始表
 
 ```python
 import pandas as pd
@@ -250,19 +197,18 @@ gen = pd.read_csv("dataset/ieee39/raw/pypower/gen.csv")
 branch = pd.read_csv("dataset/ieee39/raw/pypower/branch.csv")
 ```
 
-## 8. 重新生成
+## 7. 重新生成
 
 ```bash
-cd /Users/brandonye/CodeSpace/Powerflow
 .venv/bin/python dataset/ieee39/scripts/export_ieee39.py
 ```
 
-脚本会重新导出原始表、Pandapower 表、参考解并更新：
+脚本会重新导出原始表、参考解并更新：
 
 - `manifest.json`
 - `checksums.sha256`
 
-## 9. 已知数据特征
+## 8. 已知数据特征
 
 - 母线 31 是平衡母线。
 - 母线 30、32-39 是 PV 母线。

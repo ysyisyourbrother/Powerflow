@@ -1,13 +1,30 @@
 # 文档索引
 
-本目录存放项目级学习笔记。所有数值均来自当前 Python 环境的实际运行，不引用
-旧格式脚本。
+本目录存放项目级学习笔记。所有数值均来自当前 Python 环境的实际运行，
+代码示例只引用当前保留的实现。
+
+> 数据集相关的说明、教程和统计图已统一放到 [`../dataset/`](../dataset/README.md)，
+> 本目录只保留 IEEE 39 数据讲解和潮流通用教材。
+
+## 从哪里开始
+
+| 你的目标 | 先读 |
+|---|---|
+| 搞清楚比赛数据怎么组织、字段和单位是什么 | [dataset/README.md](../dataset/README.md) |
+| 系统学习从算例到训练样本的全过程 | [competition-dataset-guide.md](../dataset/competition-dataset-guide.md) |
+| 从零理解 IEEE 39 节点系统 | [case39/README.md](case39/README.md) |
+| 系统学习潮流计算与牛顿法 | [powerflow-textbook/README.md](powerflow-textbook/README.md) |
+| 直接看数据集字段和生成命令 | [../dataset/ieee39/processed/competition_v1/README.md](../dataset/ieee39/processed/competition_v1/README.md) |
+
+## 主要文档
 
 | 文件 | 内容 |
 |---|---|
-| [case9-guide.md](case9-guide.md) | IEEE 9 节点算例、数据表、母线类型、Pandapower 建模入口 |
+| [../dataset/README.md](../dataset/README.md) | **数据集总入口**：数据布局、字段约定、生成方式；详细字段表见 `competition_v1/README.md` |
+| [../dataset/competition-dataset-guide.md](../dataset/competition-dataset-guide.md) | **数据集完整教程**：从 IEEE 39 算例到字段、掩码、打标、读取和训练建议 |
+| [../dataset/model-design.md](../dataset/model-design.md) | **神经网络模型设计**：输入构建、数据处理、架构、损失和训练方案（迭代中） |
 | [case39/README.md](case39/README.md) | **IEEE 39 节点 New England 系统完整教程**（分 10 个文件，便于手机阅读） |
-| [powerflow-newton.md](powerflow-newton.md) | 自研 Newton-Raphson 求解器的代码结构和逐行数学对应 |
+| [powerflow-textbook/README.md](powerflow-textbook/README.md) | 从数学、标幺值、Ybus 到牛顿法和代码实现的系统教材 |
 
 ## IEEE 39 节点教程的分册
 
@@ -32,26 +49,31 @@
 | 代码 | 作用 |
 |---|---|
 | `src/powerflow/newton_raphson.py` | 残差、功率方程、解析雅可比、迭代主循环 |
-| `src/powerflow/cases.py` | 读取 PYPOWER 算例、Pandapower 转换、结果回算 |
-| `src/powerflow/report.py` | 迭代过程与结果表 |
-| `src/examples/step1_case9.py` | 完整入门示例 |
-| `src/examples/step2_pandapower.py` | Pandapower 建模仿真示例 |
-| `src/examples/step3_case39.py` | IEEE 39 节点三路求解对照（PYPOWER / 自研 / Pandapower） |
-| `dump_case39_tables.py` | 导出 case39 全部原始数据表 |
-| `dump_case39_solution.py` | 导出 case39 全部潮流结果表 |
+| `src/powerflow/cases.py` | 读取 PYPOWER 算例、结果回算 |
+| `src/powerflow/dataset/competition.py` | 赛事格式 schema、掩码、打标、读写 |
+| `src/examples/build_competition_dataset.py` | 生成 2000 条赛事对齐样本 |
+| `src/examples/step3_case39.py` | IEEE 39 节点两路求解对照（PYPOWER / 自研） |
+| `doc/case39/dump_case39_tables.py` | 导出 case39 全部原始数据表 |
+| `doc/case39/dump_case39_solution.py` | 导出 case39 全部潮流结果表 |
 
 ## 推荐顺序
 
-1. 先读 `case9-guide.md`，明确“求解什么”和“每张表是什么”。
-2. 再运行 `step1_case9.py`，亲眼看 4 次迭代。
-3. 阅读 `powerflow-newton.md`，把公式、变量和 Python 代码逐项对上。
-4. 读 [case39 教程](case39/README.md)，用 39 节点系统把同样的事情做一遍，并学习结果解读。
-5. 进入 `powerflow-textbook/` 做系统学习和 8 个实验。
+1. 先读 [dataset/README.md](../dataset/README.md)，明确数据布局和字段约定；
+   字段速查见 [competition_v1/README.md](../dataset/ieee39/processed/competition_v1/README.md)。
+2. 再读 [case39/README.md](case39/README.md)，把 39 节点系统的数据、母线类型、
+   潮流结果逐项弄懂。
+3. 需要补理论时，读 [powerflow-textbook/](powerflow-textbook/README.md)：
+   标幺值 → Ybus → 功率方程 → 牛顿法 → 代码实现。
+4. 想动手时，运行 `src/examples/build_competition_dataset.py` 和
+   `src/examples/step3_case39.py`，再看 `tests/` 里的断言。
 
 ## 运行
 
+当前环境使用 conda 的 `powerflow` 环境（Python 3.12）。如果你的环境已激活，
+直接用 `python`；如果使用项目虚拟环境，把 `python` 换成 `.venv/bin/python`。
+
 ```bash
-.venv/bin/python src/examples/step1_case9.py
-.venv/bin/python src/examples/step2_pandapower.py
-.venv/bin/python src/examples/step3_case39.py
+python src/examples/step3_case39.py
+python src/examples/build_competition_dataset.py --n-samples 2000
+python -m pytest -q
 ```

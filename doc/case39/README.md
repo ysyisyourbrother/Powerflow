@@ -3,8 +3,8 @@
 面向零基础的 IEEE 39 节点（New England）潮流计算教程。
 为了在手机上也能流畅阅读，全文拆成下面 10 个小节，每节 67 ~ 225 行。
 
-**本教程所有数字都由本机实际运行得到**（Python 3.12.14 / PYPOWER 5.1.21 /
-Pandapower 3.5.6），不是抄来的参考值。
+**本教程所有数字都由本机实际运行得到**（Python 3.12.15 / PYPOWER 5.1.21），
+不是抄来的参考值。
 
 ## 目录
 
@@ -14,7 +14,7 @@ Pandapower 3.5.6），不是抄来的参考值。
 | 2 | [完整数据表](02-data-tables.md) | 39 条母线 / 10 台发电机 / 46 条支路的全部原始数据 |
 | 3 | [节点类型与数据陷阱](03-bus-types-pitfalls.md) | PQ/PV/平衡节点、支路参数怎么变成电路、必须知道的数据特性 |
 | 4 | [牛顿-拉夫逊法原理](04-newton-theory.md) | 潮流方程、Ybus、极坐标功率方程、未知量计数、雅可比、算法流程 |
-| 5 | [求解实战与收敛过程](05-solving-practice.md) | PYPOWER 求解代码、为什么只迭代 1 次、平启动的二次收敛、Pandapower |
+| 5 | [求解实战与收敛过程](05-solving-practice.md) | PYPOWER 求解代码、为什么只迭代 1 次、平启动的二次收敛、两路交叉验证 |
 | 6 | [结果解读：母线电压](06-results-voltage.md) | 39 条母线的电压结果、如何读、发电机出力与越限 |
 | 7 | [结果解读：支路潮流](07-results-flow.md) | 线路负载率、潮流方向、有功无功平衡、结果图、自检清单 |
 | 8 | [完整代码与运行](08-code.md) | 配套脚本、运行命令、脚本结构、最小可运行示例 |
@@ -29,10 +29,9 @@ Pandapower 3.5.6），不是抄来的参考值。
 本教程中出现的**每一个数字，都是在当前项目环境里真实运行得到的**，不是抄来的参考值：
 
 ```text
-Python 3.12.14（项目 .venv）
+Python 3.12.15（项目 .venv）
 PYPOWER 5.1.21
-Pandapower 3.5.6
-NumPy 2.0.2
+NumPy 2.4.6
 ```
 
 配套可运行代码：[src/examples/step3_case39.py](../../src/examples/step3_case39.py)
@@ -43,10 +42,13 @@ NumPy 2.0.2
 
 如果你现在只想先看到结果，执行这一条命令：
 
+在仓库根目录运行：
+
 ```bash
-cd /Users/brandonye/CodeSpace/Powerflow
 MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python src/examples/step3_case39.py
 ```
+
+如果使用已激活的 conda 环境，把 `.venv/bin/python` 换成 `python` 即可。
 
 大约 10 秒后你会看到完整的六步输出，并生成两张图。之后再回头读下面的内容。
 
@@ -55,8 +57,8 @@ MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python src/examples/step3_case39.py
 | 目的 | 命令 |
 |---|---|
 | 跑完整教程示例 | `.venv/bin/python src/examples/step3_case39.py` |
-| 只看原始数据表 | `.venv/bin/python dump_case39_tables.py` |
-| 只看结果表 | `.venv/bin/python dump_case39_solution.py` |
+| 只看原始数据表 | `.venv/bin/python doc/case39/dump_case39_tables.py` |
+| 只看结果表 | `.venv/bin/python doc/case39/dump_case39_solution.py` |
 
 > `MPLCONFIGDIR` 是为了让 matplotlib 的字体缓存写到一个可写目录。如果你已经
 > 设置过，可以省略。
@@ -70,7 +72,7 @@ MPLCONFIGDIR=/tmp/mpl_cache .venv/bin/python src/examples/step3_case39.py
 | 项目 | 数值 |
 |---|---|
 | 母线 / 发电机 / 支路 | 39 / 10 / 46 |
-| 线路 / 变压器 | 35 / 11 |
+| 线路 / 变压器等值支路 | 34 / 12（其中 1 条 tap=1，电气上等价于线路） |
 | PQ / PV / 平衡节点 | 29 / 9 / 1 |
 | 未知量维度 | 67 |
 | 基准容量 | 100 MVA |
